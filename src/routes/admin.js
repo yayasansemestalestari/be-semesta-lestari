@@ -55,7 +55,7 @@ router.post("/auth/login", validate(userSchemas.login), authController.login);
 
 // Temporary public endpoint to run database seeders when data is still empty
 let seedInProgress = false;
-router.post("/seed", async (req, res, next) => {
+const runSeedEndpoint = async (req, res, next) => {
   try {
     if (seedInProgress) {
       return res.status(409).json({
@@ -84,7 +84,10 @@ router.post("/seed", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+};
+
+router.get("/seed", runSeedEndpoint);
+router.post("/seed", runSeedEndpoint);
 
 // Protected routes (require authentication)
 router.use(authenticate);
