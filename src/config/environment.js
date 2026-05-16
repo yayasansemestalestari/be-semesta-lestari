@@ -1,42 +1,29 @@
 require('dotenv').config();
 
-console.log('STEP 1');
-
-const express = require('express');
-const mysql = require('mysql2/promise');
-
-const app = express();
-
-const PORT = 3000;
-
-app.get('/', (req, res) => {
-  res.send('Hello World');
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-
-  connectDB();
-});
-
-async function connectDB() {
-  try {
-    console.log('Connecting to database...');
-
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT || 3306,
-      connectTimeout: 5000
-    });
-
-    console.log('✅ DATABASE CONNECTED');
-
-    await connection.end();
-  } catch (error) {
-    console.error('❌ DATABASE ERROR');
-    console.error(error);
+module.exports = {
+  port: process.env.PORT || 5000,
+  nodeEnv: process.env.NODE_ENV || 'development',
+  
+  database: {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    name: process.env.DB_NAME || 'semesta_lestari',
+    port: process.env.DB_PORT || 3306
+  },
+  
+  jwt: {
+    secret: process.env.JWT_SECRET || 'default-secret-key',
+    expire: process.env.JWT_EXPIRE || '7d',
+    refreshExpire: process.env.JWT_REFRESH_EXPIRE || '30d'
+  },
+  
+  swagger: {
+    enabled: process.env.SWAGGER_ENABLED === 'true'
+  },
+  
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
   }
-}
+};
