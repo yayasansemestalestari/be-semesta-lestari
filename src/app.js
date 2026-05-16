@@ -18,11 +18,16 @@ app.use(helmet({
 }));
 
 // CORS configuration
-app.use(cors({
+const corsOptions = {
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  // Let cors middleware reflect requested headers in preflight response.
+  // This avoids rejecting browser-added headers such as sec-ch-ua*.
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
