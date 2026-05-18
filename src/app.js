@@ -2,64 +2,81 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
+const fs = require("fs");
 const swaggerUi = require("swagger-ui-express");
 const config = require("./config/environment");
 const swaggerSpec = require("./utils/swagger");
 const logger = require("./utils/logger");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
-const { apiLimiter } = require("./middleware/rateLimiter");
 
 const app = express();
+
+// Behind LiteSpeed / Nginx / Hostinger reverse proxy: trust 1 hop so
+// req.ip, secure cookies, and rate-limiters see the real client.
+app.set("trust proxy", 1);
 
 // Security middleware
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disable for Swagger UI
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images to be loaded
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
 
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://yayasansemestalestari.com',
-      'https://www.yayasansemestalestari.com',
-      'https://backend.yayasansemestalestari.com',
-      'http://localhost:3000', // Frontend Admin
-      'http://localhost:3001', // Frontend Public
-      'http://localhost:5173'  // Vite default port
-    ];
+// CORS — allowed list plus regex for any subdomain of the main domain.
+// Falls back to allowing the request (returns true) on any unknown origin
+// so a misconfigured FE never causes the browser to mask a 5xx as "CORS error".
+const ALLOWED_ORIGINS = [
+  "https://yayasansemestalestari.com",
+  "https://www.yayasansemestalestari.com",
+  "https://backend.yayasansemestalestari.com",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+];
+const ALLOWED_REGEX = /^https?:\/\/([a-z0-9-]+\.)*yayasansemestalestari\.com$/i;
 
-    // Izinkan request tanpa origin atau yang ada di dalam daftar
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin) || ALLOWED_REGEX.test(origin)) {
+      return callback(null, true);
     }
+    logger.warn(`CORS: origin not in allow-list: ${origin}`);
+    return callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  // Menghapus 'allowedHeaders' agar server otomatis menerima/memantulkan 
-  // SEMUA header tambahan yang dikirim frontend (mencegah blokir karena header yang tidak dikenal)
   credentials: true,
   optionsSuccessStatus: 200,
+  maxAge: 86400,
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-// Body parsing middleware
+// Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Serve static files from uploads directory (no caching)
+// Static uploads.
+// Resolve to an absolute path once at boot and log it so we can spot
+// misconfig on Hostinger immediately instead of getting silent 404/503.
+const UPLOADS_DIR = path.resolve(__dirname, "../../uploads");
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+  logger.info(`Serving /uploads from ${UPLOADS_DIR}`);
+} catch (e) {
+  logger.error(`Cannot ensure uploads dir at ${UPLOADS_DIR}: ${e.message}`);
+}
+
 app.use(
   "/uploads",
-  // Path sekarang mengarah ke LUAR direktori project
-  express.static(path.join(__dirname, "../../uploads"), {
+  express.static(UPLOADS_DIR, {
     etag: false,
     lastModified: false,
-    setHeaders: (res, path) => {
+    setHeaders: (res) => {
       res.set({
         "Cache-Control": "no-store, no-cache, must-revalidate, private",
         Pragma: "no-cache",
@@ -69,16 +86,18 @@ app.use(
   }),
 );
 
-// Request logging middleware
+// Request logging — skip noisy paths to keep shared-host disk/console quiet.
 app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, {
-    ip: req.ip,
-    userAgent: req.get("user-agent"),
-  });
+  if (req.path !== "/api/health" && !req.path.startsWith("/uploads")) {
+    logger.info(`${req.method} ${req.path}`, {
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
   next();
 });
 
-// Disable caching - prevent 304 responses
+// Disable caching for API responses
 app.use((req, res, next) => {
   res.set({
     "Cache-Control": "no-store, no-cache, must-revalidate, private",
@@ -89,10 +108,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting - DISABLED
-// app.use('/api', apiLimiter);
-
-// Swagger documentation
+// Swagger
 if (config.swagger.enabled) {
   app.use(
     "/api-docs",
@@ -104,7 +120,6 @@ if (config.swagger.enabled) {
     }),
   );
 
-  // Swagger JSON endpoint
   app.get("/api-docs.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
@@ -114,6 +129,13 @@ if (config.swagger.enabled) {
     `Swagger documentation available at http://localhost:${config.port}/api-docs`,
   );
 }
+
+// Lightweight liveness endpoint (no DB hit) — point UptimeRobot here so the
+// app process is kept warm without thrashing the MySQL pool.
+app.get("/ping", (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.status(200).type("text/plain").send("pong");
+});
 
 // API routes
 const routes = require("./routes");
@@ -134,10 +156,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// 404 handler
 app.use(notFoundHandler);
-
-// Global error handler
 app.use(errorHandler);
 
 module.exports = app;
