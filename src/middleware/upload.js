@@ -37,24 +37,34 @@ entityDirs.forEach(dir => {
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Get entity type from route or body
-    const entityType = req.params.entity || req.body.entity || 'general';
-    const uploadPath = path.join(uploadsDir, entityType);
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    try {
+      // Get entity type from route or body
+      const entityType = req.params.entity || req.body.entity || 'general';
+      const uploadPath = path.join(uploadsDir, entityType);
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      cb(null, uploadPath);
+    } catch (error) {
+      console.error("Multer Destination Error:", error);
+      cb(error);
     }
-    
-    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename: timestamp-randomstring-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-    cb(null, sanitizedName + '-' + uniqueSuffix + ext);
+    try {
+      // Generate unique filename: timestamp-randomstring-originalname
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      const nameWithoutExt = path.basename(file.originalname, ext);
+      const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      cb(null, sanitizedName + '-' + uniqueSuffix + ext);
+    } catch (error) {
+      console.error("Multer Filename Error:", error);
+      cb(error);
+    }
   }
 });
 
