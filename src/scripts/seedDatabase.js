@@ -3,6 +3,46 @@ const bcrypt = require("bcryptjs");
 const { pool } = require("../config/database");
 const logger = require("../utils/logger");
 
+const seedArticleCategories = async () => {
+  try {
+    const categories = [
+      [
+        "Environmental Conservation",
+        "environmental-conservation",
+        "Articles about environmental protection and conservation efforts",
+      ],
+      [
+        "Community Programs",
+        "community-programs",
+        "Stories about our community engagement and programs",
+      ],
+      [
+        "Sustainability",
+        "sustainability",
+        "Tips and insights on sustainable living",
+      ],
+      [
+        "News & Updates",
+        "news-updates",
+        "Latest news and updates from Semesta Lestari",
+      ],
+    ];
+
+    for (const [name, slug, description] of categories) {
+      await pool.query(
+        `INSERT INTO categories (name, slug, description) VALUES (?, ?, ?) 
+         ON DUPLICATE KEY UPDATE description=VALUES(description)`,
+        [name, slug, description],
+      );
+    }
+
+    logger.info("✅ Categories seeded");
+  } catch (error) {
+    logger.error("Error seeding categories:", error);
+    throw error;
+  }
+};
+
 const seedData = async () => {
   try {
     logger.info("Starting database seeding...");
@@ -580,37 +620,8 @@ const seedData = async () => {
     logger.info("✅ Leadership seeded");
 
     // Seed categories
-    const categories = [
-      [
-        "Environmental Conservation",
-        "environmental-conservation",
-        "Articles about environmental protection and conservation efforts",
-      ],
-      [
-        "Community Programs",
-        "community-programs",
-        "Stories about our community engagement and programs",
-      ],
-      [
-        "Sustainability",
-        "sustainability",
-        "Tips and insights on sustainable living",
-      ],
-      [
-        "News & Updates",
-        "news-updates",
-        "Latest news and updates from Semesta Lestari",
-      ],
-    ];
-
-    for (const [name, slug, description] of categories) {
-      await pool.query(
-        `INSERT INTO categories (name, slug, description) VALUES (?, ?, ?) 
-         ON DUPLICATE KEY UPDATE description=VALUES(description)`,
-        [name, slug, description],
-      );
-    }
-    logger.info("✅ Categories seeded");
+    // Seed categories (delegated to `seedArticleCategories`)
+    await seedArticleCategories();
 
     // Seed articles
     const articles = [
@@ -1296,4 +1307,4 @@ This is just the beginning. Together, we can create lasting environmental change
   }
 };
 
-module.exports = { seedData };
+module.exports = { seedData, seedArticleCategories };

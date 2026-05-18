@@ -29,7 +29,7 @@ const categoryController = require("../controllers/categoryController");
 const programCategoryController = require("../controllers/programCategoryController");
 const adminStatisticsController = require("../controllers/statisticsController");
 const uploadController = require("../controllers/uploadController");
-const { seedData } = require("../scripts/seedDatabase");
+const { seedData, seedArticleCategories } = require("../scripts/seedDatabase");
 const {
   heroController,
   visionController,
@@ -88,6 +88,41 @@ const runSeedEndpoint = async (req, res, next) => {
 
 router.get("/seed", runSeedEndpoint);
 router.post("/seed", runSeedEndpoint);
+
+// Endpoint to run only the article categories seeder
+let seedCategoriesInProgress = false;
+const runCategoriesSeedEndpoint = async (req, res, next) => {
+  try {
+    if (seedCategoriesInProgress) {
+      return res.status(409).json({
+        success: false,
+        message: "Categories seeder is already running",
+      });
+    }
+
+    seedCategoriesInProgress = true;
+
+    setImmediate(() => {
+      seedArticleCategories()
+        .then(() => {
+          seedCategoriesInProgress = false;
+        })
+        .catch((error) => {
+          seedCategoriesInProgress = false;
+          console.error("Categories seeder failed:", error);
+        });
+    });
+
+    return res.status(202).json({
+      success: true,
+      message: "Categories seeder started",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+router.post("/seed/categories", runCategoriesSeedEndpoint);
 
 // Protected routes (require authentication)
 router.use(authenticate);
