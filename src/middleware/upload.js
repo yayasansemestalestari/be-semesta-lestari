@@ -5,35 +5,40 @@ const fs = require('fs');
 // Ensure uploads directory exists
 // Path sekarang mengarah ke LUAR direktori project: ../uploads
 const uploadsDir = path.join(__dirname, '../../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
-// Create subdirectories for different entity types
-const entityDirs = [
-  'articles',
-  'awards',
-  'gallery',
-  'merchandise',
-  'programs',
-  'partners',
-  'leadership',
-  'history',
-  'pages',
-  'hero',
-  'donation',
-  'closing',
-  'impact_section',
-  'vision',
-  'donation_cta'
-];
-
-entityDirs.forEach(dir => {
-  const dirPath = path.join(uploadsDir, dir);
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
   }
-});
+
+  // Create subdirectories for different entity types
+  const entityDirs = [
+    'articles',
+    'awards',
+    'gallery',
+    'merchandise',
+    'programs',
+    'partners',
+    'leadership',
+    'history',
+    'pages',
+    'hero',
+    'donation',
+    'closing',
+    'impact_section',
+    'vision',
+    'donation_cta'
+  ];
+
+  entityDirs.forEach(dir => {
+    const dirPath = path.join(uploadsDir, dir);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  });
+} catch (startupError) {
+  console.error("Gagal membuat folder uploads di Hostinger. Pastikan Node.js punya izin tulis (Write Permission) ke folder tersebut:", startupError.message);
+}
 
 // Configure storage
 const storage = multer.diskStorage({
