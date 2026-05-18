@@ -32,11 +32,14 @@ async function initializeApp() {
 
     logger.info("✅ Database connected");
 
-    // Initialize database tables
-    logger.info("🔄 Initializing database...");
-
-    await initializeDatabase();
-    logger.info("✅ Database initialized");
+    // AWAS: Fungsi di bawah ini membuat server MATI SEKETIKA karena 
+    // memanggil process.exit(0) dari dalam scripts/initDatabase.js!
+    // Oleh karena itu saya matikan.
+    
+    // logger.info("🔄 Initializing database...");
+    // await initializeDatabase();
+    // logger.info("✅ Database initialized");
+    
   } catch (error) {
     logger.error("❌ Initialization error:", error);
   }
