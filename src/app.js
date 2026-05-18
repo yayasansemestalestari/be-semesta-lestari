@@ -21,22 +21,14 @@ app.use(
 
 // CORS configuration
 const corsOptions = {
+  // Selalu pantulkan (reflect) origin apapun yang me-request,
+  // ini bertindak seperti "*" tetapi diizinkan untuk request dengan credentials (token)
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://yayasansemestalestari.com',
-      'https://www.yayasansemestalestari.com',
-      'http://localhost:3000', // Untuk lokal FE Admin
-      'http://localhost:3001'  // Untuk lokal FE Public
-    ];
-    // Izinkan request tanpa origin (seperti dari Postman/Mobile API) atau jika origin terdaftar
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Origin tidak diizinkan oleh CORS'));
-    }
+    callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  // Menghapus 'allowedHeaders' agar server otomatis menerima/memantulkan 
+  // SEMUA header tambahan yang dikirim frontend (mencegah blokir karena header yang tidak dikenal)
   credentials: true,
   optionsSuccessStatus: 200,
 };
